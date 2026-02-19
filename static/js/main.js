@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showNotification(title, body) {
         if ("Notification" in window && Notification.permission === "granted") {
-            new Notification(title, { body, icon: '/static/img/icon.png' });
+            new Notification(title, { body, icon: '/static/img/logo.svg' });
         }
     }
 

@@ -1,4 +1,5 @@
 <div align="center">
+<img src="static/img/logo.svg" width="150" alt="MediaLoad Logo">
 
 ```
   ███╗   ███╗███████╗██████╗ ██╗ █████╗    ██╗      ██████╗  █████╗ ██████╗ 
