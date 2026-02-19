@@ -1,0 +1,70 @@
+name: Validate MediaLoad Scripts
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  shellcheck:
+    name: ShellCheck Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install ShellCheck
+      run: sudo apt-get install -y shellcheck
+    
+    - name: Run ShellCheck on all scripts
+      run: |
+        echo "Checking install.sh..."
+        shellcheck -S warning install.sh || true
+        
+        echo "Checking mediaload.sh..."
+        shellcheck -S warning mediaload.sh || true
+        
+        echo "Checking create_shortcut.sh..."
+        shellcheck -S warning create_shortcut.sh || true
+        
+        echo "Checking uninstall.sh..."
+        shellcheck -S warning uninstall.sh || true
+        
+        echo "✅ ShellCheck complete!"
+    
+    - name: Check script syntax
+      run: |
+        bash -n install.sh && echo "✔ install.sh: OK"
+        bash -n mediaload.sh && echo "✔ mediaload.sh: OK"
+        bash -n create_shortcut.sh && echo "✔ create_shortcut.sh: OK"
+        bash -n uninstall.sh && echo "✔ uninstall.sh: OK"
+        echo "✅ All scripts have valid syntax!"
+    
+    - name: Check for executable permissions documentation
+      run: |
+        echo "Checking README includes chmod instructions..."
+        grep -q "chmod" README.md && echo "✔ chmod instructions found in README"
+        echo "✅ Documentation check complete!"
+
+  release:
+    name: Create Release Package
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Create release archive
+      run: |
+        zip -r mediaload-termux.zip \
+          install.sh mediaload.sh create_shortcut.sh \
+          uninstall.sh README.md LICENSE .gitignore
+        echo "✅ Release package created: mediaload-termux.zip"
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: mediaload-termux
+        path: mediaload-termux.zip

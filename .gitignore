@@ -1,0 +1,42 @@
+# MediaLoad - Gitignore
+
+# Downloaded media files (don't commit actual downloads)
+*.mp4
+*.mkv
+*.webm
+*.avi
+*.mov
+*.mp3
+*.m4a
+*.flac
+*.wav
+*.opus
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+
+# Log files
+*.log
+logs/
+
+# Config with personal settings (keep template)
+config/settings.conf
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+batch_urls_*.txt
+
+# Downloaded content directory
+downloads/
+
+# IDE
+.vscode/
+.idea/
