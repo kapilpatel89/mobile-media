@@ -166,7 +166,7 @@ install_ytdlp() {
     step "Installing yt-dlp (Social Media Download Engine)..."
     
     # Try pip first (latest version)
-    pip install -U yt-dlp > /dev/null 2>&1
+    pip install -U yt-dlp flask > /dev/null 2>&1
     
     if ! command -v yt-dlp &>/dev/null; then
         # Fallback: direct binary download

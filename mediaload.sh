@@ -201,6 +201,7 @@ main_menu() {
         echo -e "  ${ACCENT}  7  ${RESET}  ${WHITE}📁  My Downloads${RESET}            ${DIM}(Browse & manage files)${RESET}"
         echo -e "  ${ACCENT}  8  ${RESET}  ${WHITE}📱  Supported Sites${RESET}          ${DIM}(1000+ platforms)${RESET}"
         echo -e "  ${ACCENT}  9  ${RESET}  ${WHITE}⚙️   Settings${RESET}               ${DIM}(Configure app)${RESET}"
+        echo -e "  ${ACCENT}  w  ${RESET}  ${WHITE}🌐  Launch Web UI${RESET}          ${DIM}(Modern Browser UI)${RESET}"
         echo -e "  ${ACCENT}  0  ${RESET}  ${WHITE}❌  Exit${RESET}"
         echo ""
         draw_line "─" "$DIM"
@@ -217,6 +218,7 @@ main_menu() {
             7) my_downloads_menu ;;
             8) supported_sites_menu ;;
             9) settings_menu ;;
+            w|W|web) launch_web_ui ;;
             0|q|Q|exit|quit) 
                 echo ""
                 echo -e "  ${GREEN}Thanks for using MediaLoad! Goodbye! 👋${RESET}"
@@ -227,6 +229,53 @@ main_menu() {
                 sleep 1 ;;
         esac
     done
+}
+
+# ─────────────────────────────────────────────
+# WEB UI LAUNCHER
+# ─────────────────────────────────────────────
+
+launch_web_ui() {
+    cls
+    print_banner
+    echo -e "  ${WHITE}${BOLD}🌐 LAUNCHING WEB UI${RESET}"
+    draw_line "─" "$DIM"
+    echo ""
+    
+    # Check if Flask is installed
+    if ! python -c "import flask" &>/dev/null; then
+        print_status warn "Flask is not installed. Installing now..."
+        pip install flask yt-dlp
+    fi
+    
+    # Start server in background
+    print_status info "Starting backend server..."
+    python app.py > /dev/null 2>&1 &
+    local server_pid=$!
+    
+    # Wait for server to start
+    sleep 3
+    
+    # Get IP address
+    local ip_addr=$(ip route get 1 2>/dev/null | awk '{print $7}' || echo "127.0.0.1")
+    
+    draw_box_top
+    draw_box_row "${GREEN}Web UI is live!${RESET}"
+    draw_box_row "Local:   ${CYAN}http://localhost:5000${RESET}"
+    draw_box_row "Network: ${CYAN}http://${ip_addr}:5000${RESET}"
+    draw_box_bottom
+    
+    echo ""
+    print_status arrow "Opening browser..."
+    termux-open "http://localhost:5000" 2>/dev/null
+    
+    echo ""
+    print_status info "Press ENTER to stop the server and return to menu"
+    read -r
+    
+    kill $server_pid 2>/dev/null
+    print_status ok "Server stopped."
+    sleep 1
 }
 
 # ─────────────────────────────────────────────
