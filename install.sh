@@ -324,25 +324,18 @@ create_android_shortcut() {
     step "Creating Android Home Screen shortcut..."
     
     # Check if Termux:Widget is available
-    if [[ ! -d "$SHORTCUT_DIR" ]]; then
-        mkdir -p "$SHORTCUT_DIR"
+    mkdir -p "$SHORTCUT_DIR"
+    mkdir -p "$WIDGET_DIR"
+    
+    # Copy the shortcut launcher script from repo
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "$SCRIPT_DIR/create_shortcut.sh" ]]; then
+        cp "$SCRIPT_DIR/create_shortcut.sh" "$SHORTCUT_DIR/MediaLoad.sh"
+        cp "$SCRIPT_DIR/create_shortcut.sh" "$WIDGET_DIR/MediaLoad.sh"
+        chmod +x "$SHORTCUT_DIR/MediaLoad.sh"
+        chmod +x "$WIDGET_DIR/MediaLoad.sh"
+        success "Web UI shortcut created"
     fi
-    
-    # Create the shortcut launcher script
-    cat > "$SHORTCUT_DIR/MediaLoad.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-# MediaLoad Android Shortcut Launcher
-mediaload
-EOF
-    chmod +x "$SHORTCUT_DIR/MediaLoad.sh"
-    
-    # Also create in tasks (for Termux:Widget)
-    cat > "$WIDGET_DIR/MediaLoad.sh" << 'EOF'
-#!/data/data/com.termux/files/usr/bin/bash
-# MediaLoad Android Shortcut Launcher
-mediaload
-EOF
-    chmod +x "$WIDGET_DIR/MediaLoad.sh"
     
     # Create desktop entry file for reference
     cat > "$INSTALL_DIR/MediaLoad.desktop" << 'EOF'

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="background-blobs">
         <div class="blob blob-1"></div>
@@ -30,7 +32,8 @@
         <main>
             <section class="search-section">
                 <div class="search-box">
-                    <input type="text" id="url-input" placeholder="Paste link from YouTube, Instagram, TikTok..." autocomplete="off">
+                    <input type="text" id="url-input" placeholder="Paste link from YouTube, Instagram, TikTok..."
+                        autocomplete="off">
                     <button id="analyze-btn"><i class="fas fa-search"></i> Analyze</button>
                 </div>
             </section>
@@ -47,7 +50,7 @@
                 <div class="video-details">
                     <h3 id="video-title">Video Title</h3>
                     <p id="video-uploader" class="uploader"><i class="fas fa-user"></i> Uploader</p>
-                    
+
                     <div class="options-grid">
                         <div class="option-group">
                             <label><i class="fas fa-film"></i> Format</label>
@@ -91,9 +94,40 @@
             </section>
         </main>
 
+        <!-- Mini Music Player -->
+        <div id="music-player" class="music-player-bar hidden">
+            <div class="player-content">
+                <div class="track-info">
+                    <i class="fas fa-music"></i>
+                    <div class="track-text">
+                        <span id="player-title">Track Name</span>
+                        <span id="player-meta">Artist / Uploader</span>
+                    </div>
+                </div>
+                <div class="player-controls">
+                    <button id="prev-btn" class="ctrl-btn"><i class="fas fa-step-backward"></i></button>
+                    <button id="play-pause-btn" class="play-btn"><i class="fas fa-play"></i></button>
+                    <button id="next-btn" class="ctrl-btn"><i class="fas fa-step-forward"></i></button>
+                </div>
+                <div class="player-seek">
+                    <span id="curr-time">0:00</span>
+                    <div class="seek-bar">
+                        <div id="seek-fill" class="seek-fill"></div>
+                    </div>
+                    <span id="total-time">0:00</span>
+                </div>
+                <div class="player-volume">
+                    <i class="fas fa-volume-up"></i>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1">
+                </div>
+                <button id="close-player" class="close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <audio id="audio-element"></audio>
+        </div>
+
         <footer>
             <p>Made with ❤️ for College Learning Project | &copy; 2026 kapilpatel89</p>
-        </footer >
+        </footer>
     </div>
 
     <!-- Toast Notifications -->
@@ -101,4 +135,5 @@
 
     <script src="/static/js/main.js"></script>
 </body>
+
 </html>

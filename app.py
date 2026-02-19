@@ -176,7 +176,7 @@ def list_files():
         for name in filenames:
             if not name.startswith('.'):
                 full_path = os.path.join(root, name)
-                rel_path = os.path.relpath(full_path, DOWNLOAD_DIR)
+                rel_path = os.path.normpath(os.path.relpath(full_path, DOWNLOAD_DIR)).replace('\\', '/')
                 files.append({
                     "name": name,
                     "path": rel_path,
@@ -185,6 +185,10 @@ def list_files():
                 })
     files.sort(key=lambda x: x['time'], reverse=True)
     return jsonify(files[:50])
+
+@app.route('/api/serve/<path:filename>')
+def serve_file(filename):
+    return send_from_directory(DOWNLOAD_DIR, filename)
 
 if __name__ == '__main__':
     # Get local IP for convenience

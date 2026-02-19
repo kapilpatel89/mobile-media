@@ -8,7 +8,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadsContainer = document.getElementById('downloads-container');
     const activeDownloadsSection = document.getElementById('active-downloads');
 
+    // Player Elements
+    const musicPlayer = document.getElementById('music-player');
+    const audioElement = document.getElementById('audio-element');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const seekFill = document.getElementById('seek-fill');
+    const currTimeText = document.getElementById('curr-time');
+    const totalTimeText = document.getElementById('total-time');
+    const volumeSlider = document.getElementById('volume-slider');
+    const playerTitle = document.getElementById('player-title');
+    const playerMeta = document.getElementById('player-meta');
+
     let currentVideoData = null;
+    let playlist = [];
+    let currentTrackIndex = -1;
+
+    // Request Notification Permission
+    if ("Notification" in window) {
+        Notification.requestPermission();
+    }
 
     // --- API Calls ---
 
@@ -16,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = urlInput.value.trim();
         if (!url) return showToast('Please paste a URL', 'error');
 
-        // Reset UI
         resultCard.classList.add('hidden');
         skeleton.classList.remove('hidden');
         analyzeBtn.disabled = true;
@@ -29,13 +46,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ url })
             });
             const data = await response.json();
-
             if (data.error) throw new Error(data.error);
-
             displayResult(data);
         } catch (err) {
             showToast(err.message, 'error');
-            console.error(err);
         } finally {
             skeleton.classList.add('hidden');
             analyzeBtn.disabled = false;
@@ -45,7 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function startDownload() {
         if (!currentVideoData) return;
-
         const format = document.getElementById('format-select').value;
         const quality = document.getElementById('quality-select').value;
         const type = (format === 'mp3' || format === 'm4a') ? 'audio' : 'video';
@@ -63,9 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
             const data = await response.json();
-
             showToast('Download started!', 'success');
-            trackDownload(data.download_id);
+            trackDownload(data.download_id, currentVideoData.title);
             activeDownloadsSection.classList.remove('hidden');
         } catch (err) {
             showToast('Failed to start download', 'error');
@@ -76,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/files');
             const files = await response.json();
+            playlist = files;
             renderFiles(files);
         } catch (err) {
             console.error('Failed to fetch files');
@@ -91,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('video-uploader').innerHTML = `<i class="fas fa-user"></i> ${data.uploader}`;
         document.getElementById('video-duration').textContent = data.duration_string;
 
-        // Update quality options based on available formats
         const qSelect = document.getElementById('quality-select');
         qSelect.innerHTML = '<option value="best">Best Available</option>';
         data.formats.forEach(f => {
@@ -107,13 +119,13 @@ document.addEventListener('DOMContentLoaded', () => {
         resultCard.scrollIntoView({ behavior: 'smooth' });
     }
 
-    function trackDownload(id) {
+    function trackDownload(id, title) {
         const div = document.createElement('div');
         div.className = 'download-item';
         div.id = `dl-${id}`;
         div.innerHTML = `
             <div class="dl-info">
-                <span class="dl-title">${currentVideoData.title}</span>
+                <span class="dl-title">${title}</span>
                 <span class="dl-percentage">0%</span>
             </div>
             <div class="progress-bar-container">
@@ -130,18 +142,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`/api/status/${id}`);
                 const status = await res.json();
 
-                if (status.status === 'not_found' || status.status === 'completed' || status.status === 'failed') {
+                if (status.status === 'completed' || status.status === 'failed') {
                     clearInterval(checkStatus);
                     if (status.status === 'completed') {
                         div.querySelector('.dl-percentage').textContent = 'Completed!';
                         div.querySelector('.progress-fill').style.width = '100%';
-                        div.querySelector('.progress-fill').style.background = 'linear-gradient(90deg, #00f2fe, #4facfe)';
+                        showNotification('Download Complete', status.title);
                         showToast(`Finished: ${status.title}`, 'success');
                         setTimeout(() => div.remove(), 5000);
                         fetchFiles();
-                    } else if (status.status === 'failed') {
-                        div.querySelector('.dl-percentage').textContent = 'Failed';
-                        div.querySelector('.dl-percentage').style.color = '#ef4444';
                     }
                     return;
                 }
@@ -151,7 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 div.querySelector('.dl-percentage').textContent = `${p}%`;
                 div.querySelector('.dl-speed').textContent = `Speed: ${status.speed || 'N/A'}`;
                 div.querySelector('.dl-eta').textContent = `ETA: ${status.eta || 'N/A'}`;
-
             } catch (err) {
                 clearInterval(checkStatus);
             }
@@ -165,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        files.forEach(file => {
+        files.forEach((file, index) => {
             const card = document.createElement('div');
             card.className = 'file-card';
             const isAudio = file.name.endsWith('.mp3') || file.name.endsWith('.m4a');
@@ -175,9 +183,72 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="file-icon"><i class="fas ${icon}"></i></div>
                 <div class="file-name" title="${file.name}">${file.name}</div>
                 <div class="file-meta">${file.size}</div>
+                <div class="play-overlay">
+                    <div class="play-circle"><i class="fas fa-play"></i></div>
+                </div>
             `;
+            card.onclick = () => playTrack(index);
             filesGrid.appendChild(card);
         });
+    }
+
+    // --- Music Player Logic ---
+
+    function playTrack(index) {
+        if (index < 0 || index >= playlist.length) return;
+        currentTrackIndex = index;
+        const track = playlist[index];
+
+        audioElement.src = `/api/serve/${track.path}`;
+        playerTitle.textContent = track.name;
+        playerMeta.textContent = track.size;
+
+        musicPlayer.classList.remove('hidden');
+        audioElement.play();
+        playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+    }
+
+    playPauseBtn.onclick = () => {
+        if (audioElement.paused) {
+            audioElement.play();
+            playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+        } else {
+            audioElement.pause();
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+        }
+    };
+
+    audioElement.ontimeupdate = () => {
+        const p = (audioElement.currentTime / audioElement.duration) * 100;
+        seekFill.style.width = `${p}%`;
+        currTimeText.textContent = formatTime(audioElement.currentTime);
+        totalTimeText.textContent = formatTime(audioElement.duration);
+    };
+
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return '0:00';
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    volumeSlider.oninput = () => {
+        audioElement.volume = volumeSlider.value;
+    };
+
+    document.getElementById('next-btn').onclick = () => playTrack(currentTrackIndex + 1);
+    document.getElementById('prev-btn').onclick = () => playTrack(currentTrackIndex - 1);
+    document.getElementById('close-player').onclick = () => {
+        audioElement.pause();
+        musicPlayer.classList.add('hidden');
+    };
+
+    // --- Helper Functions ---
+
+    function showNotification(title, body) {
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(title, { body, icon: '/static/img/icon.png' });
+        }
     }
 
     function showToast(message, type = 'info') {
@@ -189,17 +260,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => toast.remove(), 3000);
     }
 
-    // --- Event Listeners ---
-
     analyzeBtn.addEventListener('click', analyzeUrl);
-    urlInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') analyzeUrl();
-    });
-
+    urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') analyzeUrl(); });
     downloadBtn.addEventListener('click', startDownload);
-
     document.getElementById('refresh-files').addEventListener('click', fetchFiles);
 
-    // Initial load
     fetchFiles();
 });
