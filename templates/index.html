@@ -5,6 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MediaLoad | Premium Social Media Downloader</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#0a0a0c">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="icon" type="image/svg+xml" href="/static/img/logo.svg">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -12,6 +21,19 @@
 </head>
 
 <body>
+    <!-- PWA Install Banner -->
+    <div id="install-banner" class="install-banner hidden">
+        <div class="banner-content">
+            <img src="/static/img/logo.svg" alt="App Icon">
+            <div class="banner-text">
+                <strong>Install MediaLoad</strong>
+                <span>Add to home screen for faster access</span>
+            </div>
+            <button id="install-btn" class="install-btn">Install</button>
+            <button id="close-banner" class="close-banner">✕</button>
+        </div>
+    </div>
+
     <div class="background-blobs">
         <div class="blob blob-1"></div>
         <div class="blob blob-2"></div>
@@ -24,9 +46,14 @@
                 <img src="/static/img/logo.svg" alt="MediaLoad Logo" class="header-logo">
                 <h1>MediaLoad</h1>
             </div>
-            <div class="status-badges">
-                <span class="badge"><i class="fas fa-microchip"></i> Termux</span>
-                <span class="badge"><i class="fas fa-bolt"></i> Powered by yt-dlp</span>
+            <div class="header-actions">
+                <button id="launch-termux" class="action-btn" title="Open Termux">
+                    <i class="fas fa-terminal"></i> <span>Termux</span>
+                </button>
+                <div class="status-badges">
+                    <span class="badge"><i class="fas fa-microchip"></i> Server</span>
+                    <span class="badge"><i class="fas fa-bolt"></i> v1.0.0</span>
+                </div>
             </div>
         </header>
 
@@ -129,14 +156,59 @@
         </div>
 
         <footer>
-            <p>Made with ❤️ for College Learning Project | &copy; 2026 kapilpatel89</p>
-        </footer>
+            <p>Built with ❤️ for College Learning Project | &copy; 2026 kapilpatel89</p>
+            </main>
     </div>
 
     <!-- Toast Notifications -->
     <div id="toast-container"></div>
 
     <script src="/static/js/main.js"></script>
+    <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(reg => console.log('Service Worker Registered!'))
+                    .catch(err => console.log('Service Worker Error: ', err));
+            });
+        }
+
+        // PWA Install Logic
+        let deferredPrompt;
+        const installBanner = document.getElementById('install-banner');
+        const installBtn = document.getElementById('install-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBanner.classList.remove('hidden');
+        });
+
+        installBtn.addEventListener('click', () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    }
+                    installBanner.classList.add('hidden');
+                    deferredPrompt = null;
+                });
+            }
+        });
+
+        document.getElementById('close-banner').addEventListener('click', () => {
+            installBanner.classList.add('hidden');
+        });
+
+        // Termux Launch Logic
+        document.getElementById('launch-termux').addEventListener('click', () => {
+            // Android Intent for Termux
+            const intentUrl = 'intent://#Intent;component=com.termux/com.termux.app.TermuxActivity;end';
+            window.location.href = intentUrl;
+        });
+    </script>
 </body>
 
 </html>
