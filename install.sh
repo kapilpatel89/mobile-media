@@ -378,6 +378,33 @@ setup_alias() {
 }
 
 # ─────────────────────────────────────────────
+# SETUP AUTO-START (Termux:Boot)
+# ─────────────────────────────────────────────
+
+setup_boot_script() {
+    separator
+    step "Configuring auto-start (Termux:Boot)..."
+    
+    local boot_dir="$HOME/.termux/boot"
+    local boot_file="$boot_dir/start-mediaload"
+    local repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    mkdir -p "$boot_dir"
+    
+    cat > "$boot_file" << EOF
+#!/data/data/com.termux/files/usr/bin/bash
+# MediaLoad Auto-Start Script
+# Starts the Web UI server on device boot
+cd "$repo_dir" && bash start_web.sh &
+EOF
+    
+    chmod +x "$boot_file"
+    
+    success "Boot script created at $boot_file"
+    info "Note: Requires 'Termux:Boot' app to be installed from F-Droid."
+}
+
+# ─────────────────────────────────────────────
 # VERIFY INSTALLATION
 # ─────────────────────────────────────────────
 
@@ -482,6 +509,7 @@ main() {
     install_app_script
     create_android_shortcut
     setup_alias
+    setup_boot_script
     verify_installation
     print_success
     
