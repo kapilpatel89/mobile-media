@@ -234,8 +234,14 @@ setup_storage() {
 
 create_config() {
     separator
+    if [[ -f "$INSTALL_DIR/config/settings.conf" ]]; then
+        step "Preserving existing configuration..."
+        # Optional: Add new config keys if they are missing
+        success "Configuration preserved"
+        return
+    fi
+
     step "Creating default configuration..."
-    
     cat > "$INSTALL_DIR/config/settings.conf" << 'CONF'
 # MediaLoad Configuration File
 # Edit this file to customize your experience
@@ -464,7 +470,11 @@ print_success() {
 main() {
     print_banner
     
-    echo -e "  ${WHITE}${BOLD}Installing ${CYAN}${APP_NAME}${WHITE} v${APP_VERSION}...${RESET}"
+    if [[ -d "$INSTALL_DIR" ]]; then
+        echo -e "  ${YELLOW}${BOLD}Update detected!${RESET} ${WHITE}Upgrading ${CYAN}${APP_NAME}${WHITE} to v${APP_VERSION}...${RESET}"
+    else
+        echo -e "  ${WHITE}${BOLD}Installing ${CYAN}${APP_NAME}${WHITE} v${APP_VERSION}...${RESET}"
+    fi
     echo ""
     
     check_termux
