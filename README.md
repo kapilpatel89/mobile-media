@@ -287,6 +287,7 @@ bash uninstall.sh
 | Shortcut not showing | Reinstall Termux:Widget from F-Droid |
 | Script not executable | Run `chmod +x *.sh` |
 | `fatal: destination path already exists` | Run `rm -rf mobile-media` then clone again |
+| `CANNOT LINK EXECUTABLE "curl"` | Run `pkg upgrade -y` or `apt full-upgrade` |
 
 ---
 

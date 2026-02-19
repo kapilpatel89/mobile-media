@@ -113,9 +113,11 @@ check_termux() {
 
 update_packages() {
     separator
-    step "Updating package repositories..."
-    pkg update -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>/dev/null | tail -3
-    success "Repositories updated"
+    step "Updating and Upgrading packages (fixing library links)..."
+    # pkg upgrade is necessary to fix CANNOT LINK EXECUTABLE errors
+    pkg update -y > /dev/null 2>&1
+    pkg upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" 2>/dev/null
+    success "System packages updated & upgraded"
 }
 
 # ─────────────────────────────────────────────
