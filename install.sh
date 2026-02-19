@@ -321,41 +321,41 @@ install_app_script() {
 
 create_android_shortcut() {
     separator
-    step "Creating Android Home Screen shortcut..."
+    step "Configuring Android Home Screen shortcut..."
     
-    # Check if Termux:Widget is available
+    # Ensure directories exist
     mkdir -p "$SHORTCUT_DIR"
     mkdir -p "$WIDGET_DIR"
     
-    # Copy the shortcut launcher script from repo
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # Path to launcher script
+    local launcher_script="$SHORTCUT_DIR/MediaLoad.sh"
+    local widget_script="$WIDGET_DIR/MediaLoad.sh"
+    
+    # Copy/Update the shortcut launcher script
     if [[ -f "$SCRIPT_DIR/create_shortcut.sh" ]]; then
-        cp "$SCRIPT_DIR/create_shortcut.sh" "$SHORTCUT_DIR/MediaLoad.sh"
-        cp "$SCRIPT_DIR/create_shortcut.sh" "$WIDGET_DIR/MediaLoad.sh"
-        chmod +x "$SHORTCUT_DIR/MediaLoad.sh"
-        chmod +x "$WIDGET_DIR/MediaLoad.sh"
-        success "Web UI shortcut created"
+        cp "$SCRIPT_DIR/create_shortcut.sh" "$launcher_script"
+        cp "$SCRIPT_DIR/create_shortcut.sh" "$widget_script"
+        chmod +x "$launcher_script"
+        chmod +x "$widget_script"
+        success "Launcher scripts ready"
+    fi
+
+    # Try to create home screen shortcut using Termux-API (if installed)
+    if command -v termux-shortcut &>/dev/null; then
+        step "Attempting to pin shortcut to Home Screen..."
+        # We use the logo.svg, but some launchers need PNG. It's better than nothing.
+        termux-shortcut -f "$launcher_script" -n "MediaLoad" 2>/dev/null
+        success "Shortcut pinning requested"
+    else
+        warn "Termux:API not found. Cannot pin automatically."
     fi
     
-    # Create desktop entry file for reference
-    cat > "$INSTALL_DIR/MediaLoad.desktop" << 'EOF'
-[Desktop Entry]
-Name=MediaLoad
-Comment=Social Media Downloader
-Exec=termux-open-url mediaload://
-Icon=mediaload
-Type=Application
-Categories=Utility;Network;
-EOF
-    
-    success "Shortcut scripts created in ~/.shortcuts/"
     echo ""
-    info "To add to Home Screen:"
+    info "TO ADD ICON TO HOME SCREEN MANUALLY:"
     echo -e "  ${YELLOW}1.${RESET} Install ${CYAN}Termux:Widget${RESET} from F-Droid"
-    echo -e "  ${YELLOW}2.${RESET} Long-press your Android home screen"
-    echo -e "  ${YELLOW}3.${RESET} Add Widget → Termux:Widget"
-    echo -e "  ${YELLOW}4.${RESET} Select '${CYAN}MediaLoad${RESET}' from the list"
-    echo ""
+    echo -e "  ${YELLOW}2.${RESET} Long-press on your Android Home Screen"
+    echo -e "  ${YELLOW}3.${RESET} Select ${CYAN}Widgets${RESET} -> ${CYAN}Termux:Widget${RESET}"
+    echo -e "  ${YELLOW}4.${RESET} Drag '${GREEN}MediaLoad.sh${RESET}' to your home screen"
 }
 
 # ─────────────────────────────────────────────
