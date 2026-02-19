@@ -74,8 +74,10 @@ Download videos, audio, images, and playlists from 1000+ platforms with a stunni
 Open **Termux** and paste this single command:
 
 ```bash
-pkg install git -y && git clone https://github.com/kapilpatel89/mobile-media && cd mobile-media && bash install.sh
+pkg install git -y && rm -rf mobile-media && git clone https://github.com/kapilpatel89/mobile-media && cd mobile-media && bash install.sh
 ```
+
+> **Reinstalling?** The command above automatically removes any old folder first — safe to run multiple times.
 
 > **That's it!** The installer automatically handles everything.
 
@@ -284,6 +286,7 @@ bash uninstall.sh
 | Age-restricted YouTube | Export cookies with a browser extension |
 | Shortcut not showing | Reinstall Termux:Widget from F-Droid |
 | Script not executable | Run `chmod +x *.sh` |
+| `fatal: destination path already exists` | Run `rm -rf mobile-media` then clone again |
 
 ---
 
@@ -302,7 +305,7 @@ bash uninstall.sh
 ```
 MIT License
 
-Copyright (c) 2026 YOUR_NAME
+Copyright (c) 2026 kapilpatel89
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
