@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlInput = document.getElementById('url-input');
     const analyzeBtn = document.getElementById('analyze-btn');
     const resultCard = document.getElementById('result-card');
+    const playlistCard = document.getElementById('playlist-card');
     const skeleton = document.getElementById('results-skeleton');
     const downloadBtn = document.getElementById('download-btn');
     const filesGrid = document.getElementById('files-grid');
@@ -22,13 +23,71 @@ document.addEventListener('DOMContentLoaded', () => {
     const loopBtn = document.getElementById('loop-btn');
     const shuffleBtn = document.getElementById('shuffle-btn');
 
+    // Video Modal Elements
+    const videoModal = document.getElementById('video-modal');
+    const mainVideo = document.getElementById('main-video');
+    const closeVideoBtn = document.getElementById('close-video');
+    const modalVideoTitle = document.getElementById('modal-video-title');
+    const shareBtn = document.getElementById('share-file');
+
     let currentVideoData = null;
     let playlist = [];
     let currentTrackIndex = -1;
     let isLooping = false;
     let isShuffling = false;
+    let currentSharedFile = null;
 
-    // Request Notification Permission
+    const offlineGateway = document.getElementById('offline-gateway');
+    const wakeServerBtn = document.getElementById('wake-server');
+
+    // --- Connectivity Check ---
+
+    async function checkServerConnection() {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+            const response = await fetch('/api/files', { signal: controller.signal });
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                offlineGateway.classList.add('hidden');
+                return true;
+            }
+        } catch (err) {
+            console.log("Server unreachable, showing gateway...");
+            offlineGateway.classList.remove('hidden');
+            return false;
+        }
+    }
+
+    wakeServerBtn.onclick = () => {
+        showToast('Starting Termux...', 'info');
+        // Android Intent for Termux to start the server
+        window.location.href = 'intent://#Intent;component=com.termux/com.termux.app.TermuxActivity;end';
+
+        // Wait a bit and try to reconnect
+        setTimeout(() => {
+            setInterval(async () => {
+                if (await checkServerConnection()) {
+                    location.reload();
+                }
+            }, 3000);
+        }, 5000);
+    };
+
+    // --- PWA & Notification Logic ---
+
+    function checkPWA() {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        const bannerDismissed = localStorage.getItem('pwa-dismissed');
+        const installBanner = document.getElementById('install-banner');
+
+        if (!isStandalone && !bannerDismissed && installBanner) {
+            installBanner.classList.remove('hidden');
+        }
+    }
+
     if ("Notification" in window) {
         Notification.requestPermission();
     }
@@ -40,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!url) return showToast('Please paste a URL', 'error');
 
         resultCard.classList.add('hidden');
+        playlistCard.classList.add('hidden');
         skeleton.classList.remove('hidden');
         analyzeBtn.disabled = true;
         analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
@@ -52,7 +112,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json();
             if (data.error) throw new Error(data.error);
-            displayResult(data);
+
+            if (data.is_playlist) {
+                displayPlaylist(data);
+            } else {
+                displayResult(data);
+            }
         } catch (err) {
             showToast(err.message, 'error');
         } finally {
@@ -62,8 +127,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function startDownload() {
-        if (!currentVideoData) return;
+    async function startDownload(urlOverride = null, titleOverride = null) {
+        const url = urlOverride || currentVideoData.url;
+        const title = titleOverride || currentVideoData.title;
         const format = document.getElementById('format-select').value;
         const quality = document.getElementById('quality-select').value;
         const type = (format === 'mp3' || format === 'm4a') ? 'audio' : 'video';
@@ -73,8 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    url: currentVideoData.url,
-                    title: currentVideoData.title,
+                    url: url,
+                    title: title,
                     type: type,
                     format: format,
                     quality: quality
@@ -82,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json();
             showToast('Download started!', 'success');
-            trackDownload(data.download_id, currentVideoData.title);
+            trackDownload(data.download_id, title);
             activeDownloadsSection.classList.remove('hidden');
         } catch (err) {
             showToast('Failed to start download', 'error');
@@ -97,6 +163,26 @@ document.addEventListener('DOMContentLoaded', () => {
             renderFiles(files);
         } catch (err) {
             console.error('Failed to fetch files');
+        }
+    }
+
+    async function deleteFile(file, cardElement) {
+        if (!confirm(`Permanently delete "${file.name}"?`)) return;
+
+        cardElement.classList.add('deleting');
+        try {
+            const response = await fetch('/api/delete', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: file.path })
+            });
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+            showToast('File deleted', 'success');
+            fetchFiles();
+        } catch (err) {
+            showToast('Delete failed', 'error');
+            cardElement.classList.remove('deleting');
         }
     }
 
@@ -122,6 +208,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resultCard.classList.remove('hidden');
         resultCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function displayPlaylist(data) {
+        document.getElementById('playlist-title').textContent = data.title;
+        document.getElementById('playlist-meta').innerHTML = `<i class="fas fa-list"></i> ${data.count} Videos`;
+
+        const container = document.getElementById('playlist-entries');
+        container.innerHTML = '';
+
+        data.entries.forEach(entry => {
+            const item = document.createElement('div');
+            item.className = 'playlist-item';
+            item.innerHTML = `
+                <div class="playlist-item-info">
+                    <i class="fas fa-play-circle text-dim"></i>
+                    <span class="playlist-item-title">${entry.title}</span>
+                </div>
+                <div class="playlist-actions">
+                    <button class="mini-btn play-now" title="Play without download"><i class="fas fa-play"></i></button>
+                    <button class="mini-btn dl-now" title="Download"><i class="fas fa-download"></i></button>
+                </div>
+            `;
+
+            item.querySelector('.play-now').onclick = () => {
+                // For YouTube, use embed; otherwise try direct play
+                const videoId = entry.id || entry.url.split('v=')[1];
+                if (videoId) {
+                    showToast('Opening Preview...', 'info');
+                    // Simple logic: we'll use a YouTube embed for "play without download"
+                    openVideoModal(`https://www.youtube.com/embed/${videoId}?autoplay=1`, entry.title, true);
+                } else {
+                    showToast('Streaming not supported for this source', 'error');
+                }
+            };
+
+            item.querySelector('.dl-now').onclick = () => {
+                startDownload(entry.url, entry.title);
+            };
+
+            container.appendChild(item);
+        });
+
+        playlistCard.classList.remove('hidden');
+        playlistCard.scrollIntoView({ behavior: 'smooth' });
     }
 
     function trackDownload(id, title) {
@@ -192,12 +322,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="play-circle"><i class="fas fa-play"></i></div>
                 </div>
             `;
-            card.onclick = () => playTrack(index);
+
+            // Interaction: Tap to play
+            card.onclick = () => {
+                if (isAudio) playTrack(index);
+                else openVideoModal(`/api/serve/${file.path}`, file.name);
+            };
+
+            // Interaction: Long press to delete
+            let timer;
+            const start = () => {
+                timer = setTimeout(() => deleteFile(file, card), 800);
+            };
+            const cancel = () => clearTimeout(timer);
+
+            card.addEventListener('mousedown', start);
+            card.addEventListener('touchstart', start);
+            card.addEventListener('mouseup', cancel);
+            card.addEventListener('mouseleave', cancel);
+            card.addEventListener('touchend', cancel);
+
             filesGrid.appendChild(card);
         });
     }
 
-    // --- Music Player Logic ---
+    // --- Media Player & Modal Logic ---
 
     function playTrack(index) {
         if (index < 0) index = playlist.length - 1;
@@ -215,6 +364,71 @@ document.addEventListener('DOMContentLoaded', () => {
         playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
     }
 
+    function openVideoModal(source, title, isEmbed = false) {
+        modalVideoTitle.textContent = title;
+        currentSharedFile = { source, title, isEmbed };
+
+        const container = videoModal.querySelector('.video-container');
+        container.innerHTML = '';
+
+        if (isEmbed) {
+            const iframe = document.createElement('iframe');
+            iframe.src = source;
+            iframe.className = 'main-video';
+            iframe.setAttribute('allowfullscreen', 'true');
+            iframe.setAttribute('frameborder', '0');
+            container.appendChild(iframe);
+            shareBtn.classList.add('hidden'); // Can't easily share embed URLs as files
+        } else {
+            const video = document.createElement('video');
+            video.src = source;
+            video.controls = true;
+            video.className = 'main-video';
+            video.autoplay = true;
+            container.appendChild(video);
+            shareBtn.classList.remove('hidden');
+
+            // Try full screen on play
+            video.onplay = () => {
+                if (video.requestFullscreen) video.requestFullscreen();
+            }
+        }
+
+        videoModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    closeVideoBtn.onclick = () => {
+        const container = videoModal.querySelector('.video-container');
+        container.innerHTML = ''; // Stop video playback
+        videoModal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    };
+
+    shareBtn.onclick = async () => {
+        if (!currentSharedFile || currentSharedFile.isEmbed) return;
+
+        try {
+            const response = await fetch(currentSharedFile.source);
+            const blob = await response.blob();
+            const file = new File([blob], currentSharedFile.title, { type: blob.type });
+
+            if (navigator.share) {
+                await navigator.share({
+                    files: [file],
+                    title: currentSharedFile.title,
+                    text: 'Shared from MediaLoad'
+                });
+            } else {
+                showToast('Share not supported on this browser', 'error');
+            }
+        } catch (err) {
+            showToast('Sharing failed', 'error');
+        }
+    };
+
+    // --- Control Handlers ---
+
     playPauseBtn.onclick = () => {
         if (audioElement.paused) {
             audioElement.play();
@@ -225,7 +439,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Seek interaction
     seekBar.onclick = (e) => {
         const rect = seekBar.getBoundingClientRect();
         const p = (e.clientX - rect.left) / rect.width;
@@ -306,10 +519,22 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => toast.remove(), 3000);
     }
 
+    // --- Init ---
+
     analyzeBtn.addEventListener('click', analyzeUrl);
     urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') analyzeUrl(); });
-    downloadBtn.addEventListener('click', startDownload);
+    downloadBtn.addEventListener('click', () => startDownload());
     document.getElementById('refresh-files').addEventListener('click', fetchFiles);
 
+    // PWA Close Banner Handler
+    const closeBanner = document.getElementById('close-banner');
+    if (closeBanner) {
+        closeBanner.onclick = () => {
+            document.getElementById('install-banner').classList.add('hidden');
+            localStorage.setItem('pwa-dismissed', 'true');
+        };
+    }
+
+    checkPWA();
     fetchFiles();
 });

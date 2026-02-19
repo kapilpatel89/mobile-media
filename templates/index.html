@@ -40,6 +40,23 @@
         <div class="blob blob-3"></div>
     </div>
 
+    <!-- Server Offline Gateway -->
+    <div id="offline-gateway" class="offline-gateway hidden">
+        <div class="gateway-content">
+            <div class="pulse-icon">
+                <i class="fas fa-power-off"></i>
+            </div>
+            <h2>Server is Sleeping</h2>
+            <p>The MediaLoad backend in Termux is currently offline.</p>
+            <div class="gateway-actions">
+                <button id="wake-server" class="primary-btn">
+                    <i class="fas fa-bolt"></i> Wake Up Server
+                </button>
+                <p class="hint">Click above to start the server in Termux</p>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <div class="logo">
@@ -106,6 +123,16 @@
                 </div>
             </section>
 
+            <section id="playlist-card" class="result-card hidden">
+                <div class="playlist-header">
+                    <h3 id="playlist-title">Playlist</h3>
+                    <p id="playlist-meta" class="uploader"><i class="fas fa-list"></i> 0 Videos</p>
+                </div>
+                <div id="playlist-entries" class="playlist-entries">
+                    <!-- Entries injected here -->
+                </div>
+            </section>
+
             <section id="active-downloads" class="active-downloads-section hidden">
                 <h2><i class="fas fa-sync fa-spin"></i> Active Downloads</h2>
                 <div id="downloads-container"></div>
@@ -158,6 +185,20 @@
         <footer>
             <p>Built with ❤️ for College Learning Project | &copy; 2026 kapilpatel89</p>
             </main>
+    </div>
+
+    <!-- Video Player Modal -->
+    <div id="video-modal" class="video-modal hidden">
+        <div class="modal-content">
+            <button id="close-video" class="close-video"><i class="fas fa-times"></i></button>
+            <div class="video-container">
+                <video id="main-video" controls class="main-video"></video>
+            </div>
+            <div class="modal-footer">
+                <h3 id="modal-video-title">Video Name</h3>
+                <button id="share-file" class="share-btn"><i class="fas fa-share-alt"></i> Share</button>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Notifications -->

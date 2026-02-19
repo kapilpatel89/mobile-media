@@ -43,38 +43,66 @@ def get_info():
         return jsonify({"error": "No URL provided"}), 400
     
     try:
-        ydl_opts = {'quiet': True, 'no_warnings': True}
+        # Check if it's a playlist URL
+        is_playlist = 'list=' in url or 'playlist' in url or 'album' in url
+        
+        ydl_opts = {
+            'quiet': True, 
+            'no_warnings': True,
+            'extract_flat': 'in_playlist' if is_playlist else False
+        }
+        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            # Simplify info for frontend
-            simplified_info = {
-                "title": info.get('title'),
-                "thumbnail": info.get('thumbnail'),
-                "uploader": info.get('uploader'),
-                "duration": info.get('duration'),
-                "duration_string": time.strftime('%H:%M:%S', time.gmtime(info.get('duration', 0))),
-                "views": info.get('view_count'),
-                "description": info.get('description', '')[:200] + "...",
-                "formats": [],
-                "url": url
-            }
             
-            # Extract useful formats (mp4/mkv/mp3)
-            seen_heights = set()
-            for f in info.get('formats', []):
-                if f.get('vcodec') != 'none' and f.get('height'):
-                    h = f.get('height')
-                    if h not in seen_heights:
-                        simplified_info['formats'].append({
-                            "id": f.get('format_id'),
-                            "ext": f.get('ext'),
-                            "height": h,
-                            "note": f.get('format_note', f"{h}p")
-                        })
-                        seen_heights.add(h)
-            
-            simplified_info['formats'].sort(key=lambda x: x['height'], reverse=True)
-            return jsonify(simplified_info)
+            if 'entries' in info:
+                # It's a playlist
+                playlist_info = {
+                    "is_playlist": True,
+                    "title": info.get('title'),
+                    "uploader": info.get('uploader'),
+                    "count": len(info.get('entries', [])),
+                    "entries": [],
+                    "url": url
+                }
+                for entry in info['entries'][:50]: # Limit to 50 for performance
+                    playlist_info['entries'].append({
+                        "title": entry.get('title'),
+                        "url": f"https://www.youtube.com/watch?v={entry.get('id')}" if entry.get('id') else entry.get('url'),
+                        "duration": entry.get('duration'),
+                        "id": entry.get('id')
+                    })
+                return jsonify(playlist_info)
+            else:
+                # Single video
+                simplified_info = {
+                    "is_playlist": False,
+                    "title": info.get('title'),
+                    "thumbnail": info.get('thumbnail'),
+                    "uploader": info.get('uploader'),
+                    "duration": info.get('duration'),
+                    "duration_string": time.strftime('%H:%M:%S', time.gmtime(info.get('duration', 0))) if info.get('duration') else "N/A",
+                    "views": info.get('view_count'),
+                    "description": info.get('description', '')[:200] + "...",
+                    "formats": [],
+                    "url": url
+                }
+                # Extract useful formats (mp4/mkv/mp3)
+                seen_heights = set()
+                for f in info.get('formats', []):
+                    if f.get('vcodec') != 'none' and f.get('height'):
+                        h = f.get('height')
+                        if h not in seen_heights:
+                            simplified_info['formats'].append({
+                                "id": f.get('format_id'),
+                                "ext": f.get('ext'),
+                                "height": h,
+                                "note": f.get('format_note', f"{h}p")
+                            })
+                            seen_heights.add(h)
+                
+                simplified_info['formats'].sort(key=lambda x: x['height'], reverse=True)
+                return jsonify(simplified_info)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -189,6 +217,26 @@ def list_files():
 @app.route('/api/serve/<path:filename>')
 def serve_file(filename):
     return send_from_directory(DOWNLOAD_DIR, filename)
+
+@app.route('/api/delete', methods=['DELETE'])
+def delete_file():
+    path = request.json.get('path')
+    if not path:
+        return jsonify({"error": "No path provided"}), 400
+    
+    full_path = os.path.join(DOWNLOAD_DIR, path)
+    if not os.path.exists(full_path):
+        return jsonify({"error": "File not found"}), 404
+    
+    try:
+        os.remove(full_path)
+        # Also clean up empty uploader directories
+        parent = os.path.dirname(full_path)
+        if parent != DOWNLOAD_DIR and not os.listdir(parent):
+            os.rmdir(parent)
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     # Get local IP for convenience
