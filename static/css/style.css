@@ -466,6 +466,12 @@ header {
     color: var(--text-main);
     cursor: pointer;
     font-size: 1.1rem;
+    transition: color 0.3s;
+}
+
+.ctrl-btn.active {
+    color: var(--primary);
+    text-shadow: 0 0 10px var(--primary);
 }
 
 .play-btn {

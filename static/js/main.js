@@ -13,15 +13,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const audioElement = document.getElementById('audio-element');
     const playPauseBtn = document.getElementById('play-pause-btn');
     const seekFill = document.getElementById('seek-fill');
+    const seekBar = document.querySelector('.seek-bar');
     const currTimeText = document.getElementById('curr-time');
     const totalTimeText = document.getElementById('total-time');
     const volumeSlider = document.getElementById('volume-slider');
     const playerTitle = document.getElementById('player-title');
     const playerMeta = document.getElementById('player-meta');
+    const loopBtn = document.getElementById('loop-btn');
+    const shuffleBtn = document.getElementById('shuffle-btn');
 
     let currentVideoData = null;
     let playlist = [];
     let currentTrackIndex = -1;
+    let isLooping = false;
+    let isShuffling = false;
 
     // Request Notification Permission
     if ("Notification" in window) {
@@ -195,7 +200,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Music Player Logic ---
 
     function playTrack(index) {
-        if (index < 0 || index >= playlist.length) return;
+        if (index < 0) index = playlist.length - 1;
+        if (index >= playlist.length) index = 0;
+
         currentTrackIndex = index;
         const track = playlist[index];
 
@@ -218,11 +225,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Seek interaction
+    seekBar.onclick = (e) => {
+        const rect = seekBar.getBoundingClientRect();
+        const p = (e.clientX - rect.left) / rect.width;
+        audioElement.currentTime = p * audioElement.duration;
+    };
+
     audioElement.ontimeupdate = () => {
         const p = (audioElement.currentTime / audioElement.duration) * 100;
-        seekFill.style.width = `${p}%`;
+        seekFill.style.width = `${p || 0}%`;
         currTimeText.textContent = formatTime(audioElement.currentTime);
         totalTimeText.textContent = formatTime(audioElement.duration);
+    };
+
+    audioElement.onended = () => {
+        if (isLooping) {
+            audioElement.currentTime = 0;
+            audioElement.play();
+        } else if (isShuffling) {
+            const nextIndex = Math.floor(Math.random() * playlist.length);
+            playTrack(nextIndex);
+        } else {
+            playTrack(currentTrackIndex + 1);
+        }
+    };
+
+    loopBtn.onclick = () => {
+        isLooping = !isLooping;
+        loopBtn.classList.toggle('active', isLooping);
+        showToast(isLooping ? 'Loop Enabled' : 'Loop Disabled');
+    };
+
+    shuffleBtn.onclick = () => {
+        isShuffling = !isShuffling;
+        shuffleBtn.classList.toggle('active', isShuffling);
+        showToast(isShuffling ? 'Shuffle Enabled' : 'Shuffle Disabled');
     };
 
     function formatTime(seconds) {
@@ -236,8 +274,16 @@ document.addEventListener('DOMContentLoaded', () => {
         audioElement.volume = volumeSlider.value;
     };
 
-    document.getElementById('next-btn').onclick = () => playTrack(currentTrackIndex + 1);
-    document.getElementById('prev-btn').onclick = () => playTrack(currentTrackIndex - 1);
+    document.getElementById('next-btn').onclick = () => {
+        if (isShuffling) playTrack(Math.floor(Math.random() * playlist.length));
+        else playTrack(currentTrackIndex + 1);
+    };
+
+    document.getElementById('prev-btn').onclick = () => {
+        if (isShuffling) playTrack(Math.floor(Math.random() * playlist.length));
+        else playTrack(currentTrackIndex - 1);
+    };
+
     document.getElementById('close-player').onclick = () => {
         audioElement.pause();
         musicPlayer.classList.add('hidden');
